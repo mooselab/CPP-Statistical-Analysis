@@ -17,6 +17,16 @@ if __name__ == "__main__":
         print("Input directory does not exist")
         exit(1)
 
+    io_operations = ['fopen', 'freopen', 'fclose', 'fflush', 'fwide', 'setbuf', 'setvbuf',
+                     'fread', 'fwrite',
+                     'getc', 'fgetc', 'fgets', 'putc', 'fputc', 'fputs', 'getchar', 'gets', 'putchar', 'puts', 'ungetc',
+                     'fgetwc', 'getwc', 'fgetws', 'fputwc', 'putwc', 'fputws', 'ungetwc', 'getwchar', 'putwchar',
+                     'scanf', 'fscanf', 'sscanf', 'printf', 'fprintf', 'sprintf', 'snprintf', 'vprintf', 'vfprintf', 'vsprintf', 'vsnprintf','vscanf', 'vfscanf', 'vsscanf',
+                     'wscanf', 'fwscanf', 'swscanf', 'wprintf', 'fwprintf', 'swprintf', 'vfwprintf', 'vswprintf', 'vwprintf', 'vwscanf', 'vfwscanf', 'vswscanf',
+                     'ftell', 'fseek', 'rewind', 'fgetpos', 'fsetpos', 
+                     'clearerr', 'feof', 'ferror', 'perror',
+                     'remove', 'rename', 'tmpfile', 'tmpnam', 'tmpnam_r']
+
     result = []
 
     # Loop through all files in the input directory
@@ -28,7 +38,7 @@ if __name__ == "__main__":
 
             root = ET.fromstring(xml)
 
-            # Get root functions and print them
+            # Get root functions
             for function in root.findall('function'):
                 # Find all loops and nested loops
                 loops = []
@@ -53,6 +63,9 @@ if __name__ == "__main__":
 
                 # Find number of calls inside the function
                 number_of_calls = len(function.findall('.//call'))
+
+                # Check if function has I/O operations
+                has_io = any(get_element_texts(call.find('name')) in io_operations for call in function.findall('.//call'))
 
                 # Find number of blocks
                 number_of_blocks = len(function.findall('.//block'))
@@ -86,6 +99,7 @@ if __name__ == "__main__":
                         item['functions'].append({
                             'name': function_name,
                             'line_of_codes': number_of_semicolons + number_of_blocks - 1, # -1 because of the function entire block
+                            'has_io': has_io,
                             'number_of_loops': number_of_loops,
                             'number_of_nested_loops': number_of_nested_loops,
                             'number_of_calls': number_of_calls,
