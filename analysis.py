@@ -4,6 +4,7 @@ import sys
 import subprocess
 from pathlib import Path
 import xml.etree.ElementTree as ET
+import lizard
 
 from utils import get_element_texts
 
@@ -37,6 +38,8 @@ if __name__ == "__main__":
             xml = re.sub('xmlns="[^"]+"', '', xml, count=1) # Remove namespace
 
             root = ET.fromstring(xml)
+
+            complexities = {f.__dict__['long_name'].split('(')[0]: f.__dict__['cyclomatic_complexity'] for f in lizard.analyze_file(str(p)).function_list}
 
             # Get root functions
             for function in root.findall('function'):
@@ -100,6 +103,7 @@ if __name__ == "__main__":
                             'name': function_name,
                             'line_of_codes': number_of_semicolons + number_of_blocks - 1, # -1 because of the function entire block
                             'has_io': has_io,
+                            'cyclomatic_complexity': complexities[function_name],
                             'number_of_loops': number_of_loops,
                             'number_of_nested_loops': number_of_nested_loops,
                             'number_of_calls': number_of_calls,
