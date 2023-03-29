@@ -29,6 +29,7 @@ if __name__ == "__main__":
                      'remove', 'rename', 'tmpfile', 'tmpnam', 'tmpnam_r']
 
     result = []
+    callers = {}
 
     # Loop through all files in the input directory
     for ext in ['*.cpp', '*.cxx', '*.cc', '*.c']:
@@ -74,11 +75,15 @@ if __name__ == "__main__":
                 number_of_blocks = len(function.findall('.//block'))
 
                 # Check if function is recursive
+                # Add the function call to the callers dictionary
                 is_recursive = False
                 for call in function.findall('.//call'):
                     if get_element_texts(call.find('name')) == function_name.split(')')[0]:
                         is_recursive = True
-                        break
+
+                    if get_element_texts(call.find('name')) not in callers:
+                        callers[get_element_texts(call.find('name'))] = 0
+                    callers[get_element_texts(call.find('name'))] += 1
 
                 # Number of statements individually
                 number_of_expression_statements = len(function.findall('.//expr_stmt'))
@@ -103,7 +108,7 @@ if __name__ == "__main__":
                             'name': function_name,
                             'line_of_codes': number_of_semicolons + number_of_blocks - 1, # -1 because of the function entire block
                             'has_io': has_io,
-                            'cyclomatic_complexity': complexities[function_name],
+                            'cyclomatic_complexity': complexities.get(function_name, 0),
                             'number_of_loops': number_of_loops,
                             'number_of_nested_loops': number_of_nested_loops,
                             'number_of_calls': number_of_calls,
@@ -119,6 +124,11 @@ if __name__ == "__main__":
                                 'number_of_preprocessor_if': number_of_preprocessor_if
                             }
                         })
+
+    # Add the number of callers to the result
+    for item in result:
+        for function in item['functions']:
+            function['number_of_callers'] = callers.get(function['name'], 0)
 
     # Write result to file
     with open('result.json', 'w') as f:
