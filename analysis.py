@@ -30,6 +30,7 @@ if __name__ == "__main__":
 
     result = []
     callers = {}
+    mpi_functions = []
 
     # Loop through all files in the input directory
     for ext in ['*.cpp', '*.cxx', '*.cc', '*.c']:
@@ -65,25 +66,32 @@ if __name__ == "__main__":
 
                 number_of_loops = len(loops)
 
-                # Find number of calls inside the function
-                number_of_calls = len(function.findall('.//call'))
-
                 # Check if function has I/O operations
                 has_io = any(get_element_texts(call.find('name')) in io_operations for call in function.findall('.//call'))
 
                 # Find number of blocks
                 number_of_blocks = len(function.findall('.//block'))
 
+                # Add functions callees
                 # Check if function is recursive
                 # Add the function call to the callers dictionary
+                callees = []
                 is_recursive = False
+                is_MPI = False
                 for call in function.findall('.//call'):
-                    if get_element_texts(call.find('name')) == function_name.split(')')[0]:
+                    callee_name = get_element_texts(call.find('name'))
+                    callees.append(callee_name) 
+                    
+                    if callee_name == function_name.split(')')[0]:
                         is_recursive = True
 
-                    if get_element_texts(call.find('name')) not in callers:
-                        callers[get_element_texts(call.find('name'))] = 0
-                    callers[get_element_texts(call.find('name'))] += 1
+                    if callee_name.startswith('MPI_'):
+                        is_MPI = True
+                        mpi_functions.append(function_name)
+
+                    if callee_name not in callers:
+                        callers[callee_name] = 0
+                    callers[callee_name] += 1
 
                 # Number of statements individually
                 number_of_expression_statements = len(function.findall('.//expr_stmt'))
@@ -108,10 +116,11 @@ if __name__ == "__main__":
                             'name': function_name,
                             'line_of_codes': number_of_semicolons + number_of_blocks - 1, # -1 because of the function entire block
                             'has_io': has_io,
+                            'is_MPI': is_MPI,
                             'cyclomatic_complexity': complexities.get(function_name, 0),
                             'number_of_loops': number_of_loops,
                             'number_of_nested_loops': number_of_nested_loops,
-                            'number_of_calls': number_of_calls,
+                            'number_of_calls': callees,
                             'is_recursive': is_recursive,
                             'number_of_statements': {
                                 'number_of_expression_statements': number_of_expression_statements,
@@ -126,9 +135,16 @@ if __name__ == "__main__":
                         })
 
     # Add the number of callers to the result
+    # Check if function is calling MPI functions
     for item in result:
         for function in item['functions']:
             function['number_of_callers'] = callers.get(function['name'], 0)
+
+            # Check if function is calling MPI functions
+            function['is_calling_MPI'] = any(x in mpi_functions for x in function['number_of_calls'])
+
+            # Set number of calls (replace list with number)
+            function['number_of_calls'] = len(function['number_of_calls'])
 
     # Write result to file
     with open('result.json', 'w') as f:
